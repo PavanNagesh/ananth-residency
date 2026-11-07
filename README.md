@@ -44,11 +44,53 @@ bun run db:generate         # after changing server/db/schema.ts, create a migra
 
 ## Deploy to Vercel
 
-1. **Database.** In the Vercel project, add the Neon integration (Storage → Postgres). Copy the **pooled** connection string into `DATABASE_URL`.
-2. **Firebase.** Create a Firebase project, switch it to the Blaze plan (phone sign-in sends paid SMS), enable *Authentication → Sign-in method → Phone*, and add your Vercel domain under *Authentication → Settings → Authorised domains*. From *Project settings → Your apps → Web app*, copy the config into the `VITE_FIREBASE_*` variables, and set `FIREBASE_PROJECT_ID`.
-3. **Environment variables** in Vercel: `DATABASE_URL`, `SESSION_SECRET` (long random string), `FIREBASE_PROJECT_ID`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`. Do **not** set `DEV_OTP` in production.
-4. **First deploy.** Push the repository and import it in Vercel (framework preset: Vite; `vercel.json` sets the build). Then, from your machine with the production `DATABASE_URL` and `OWNER_*` values in `.env`, run `bun run db:setup` once.
-5. **Razorpay (optional).** Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`. In the Razorpay dashboard add a webhook to `https://<your-domain>/api/payments/razorpay/webhook` for `payment.captured` and `order.paid`. Then the owner turns on *Settings → Offer online payment*.
+The build is configured in `vercel.json`: Bun installs and builds, `dist/` is served as the site, and `api/index.ts` becomes one Node 22 function that handles every `/api/*` request. Every other path falls back to `index.html`.
+
+**1. Push to GitHub.** Create an empty **private** repository on github.com (no README or licence), then:
+
+```bash
+git remote add origin https://github.com/<you>/ananth-residency.git
+git push -u origin main
+```
+
+**2. Create the Vercel project.** On vercel.com choose *Add New → Project*, import the repository and keep the detected settings. The first build succeeds, but the app needs the steps below before it works.
+
+**3. Add the database.** In the project, open *Storage → Create → Neon (Postgres)* and connect it to the project. Copy the **pooled** connection string; it is the one whose host contains `-pooler`.
+
+**4. Set up Firebase phone sign-in.**
+- Create a project at console.firebase.google.com and upgrade it to the **Blaze** plan. Phone sign-in sends SMS, which is billed per message.
+- Enable *Authentication → Sign-in method → Phone*.
+- Add your domains under *Authentication → Settings → Authorised domains*: the `*.vercel.app` domain and any custom domain.
+- Under *Project settings → Your apps*, add a **Web** app and copy its config.
+- Optional: add test numbers under *Phone → Phone numbers for testing*, so you can try sign-in without real SMS.
+
+**5. Set environment variables** in *Vercel → Settings → Environment Variables*, for Production and Preview:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Neon pooled connection string |
+| `SESSION_SECRET` | 48+ random characters. Generate with `bun -e "console.log(crypto.randomUUID()+crypto.randomUUID())"` |
+| `FIREBASE_PROJECT_ID` | Firebase project ID |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | From the Firebase web app config |
+
+Do **not** set `DEV_OTP`. The server refuses the development code on production deployments anyway.
+
+**6. Create the tables and the owner account** once, from your computer. Put the production `DATABASE_URL` and the owner's real `OWNER_NAME`, `OWNER_PHONE` and `OWNER_PASSWORD` into `.env`, then run:
+
+```bash
+bun run db:setup
+```
+
+Afterwards, switch `.env` back to your local database.
+
+**7. Redeploy** from the Vercel dashboard, so the build picks up the `VITE_FIREBASE_*` values. Then open the site, place a test order, and sign in at `/staff` with the owner's phone number and password.
+
+**8. Razorpay (optional, any time later).**
+- Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` in Vercel, then redeploy.
+- In the Razorpay dashboard, add a webhook to `https://<your-domain>/api/payments/razorpay/webhook` for `payment.captured` and `order.paid`.
+- The owner then turns on *Settings → Offer online payment*.
+
+**Schema changes later:** edit `server/db/schema.ts`, then run `bun run db:generate` and commit the new file in `drizzle/`. Run `bun run db:migrate` against production before or right after deploying.
 
 ## How ordering works
 
