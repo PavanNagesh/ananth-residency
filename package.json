@@ -1,0 +1,53 @@
+{
+  "name": "ananth-residency",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun scripts/dev.ts",
+    "dev:web": "bun --bun vite",
+    "dev:api": "bun --hot server/dev.ts",
+    "build": "tsc -b && bun --bun vite build",
+    "preview": "bun --bun vite preview",
+    "lint": "oxlint",
+    "typecheck": "tsc -b",
+    "test": "bun test",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun server/db/migrate.ts",
+    "db:seed": "bun server/db/seed.ts",
+    "db:setup": "bun server/db/migrate.ts && bun server/db/seed.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/noto-serif-kannada": "^5.3.0",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.4",
+    "firebase": "^13.2.0",
+    "hono": "^4.13.16",
+    "jose": "^6.2.15",
+    "postgres": "^4.1.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^8.5.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.14.0",
+    "drizzle-kit": "^0.31.11",
+    "oxlint": "^1.90.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

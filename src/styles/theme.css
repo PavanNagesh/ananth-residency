@@ -1,0 +1,113 @@
+/* Tailwind CSS v4 bridge: maps tokens.css roles to utilities (adapted from glyph-studio).
+   Colors switch theme by themselves — no `dark:` color variants needed. */
+
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-theme="light"], [data-theme="light"] *)) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunken: var(--paper-sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
+  --color-focus: var(--focus);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-on-brand: var(--on-brand);
+  --color-on-brand-2: var(--on-brand-2);
+  --color-gold: var(--gold);
+  --color-veg: var(--veg);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-kannada: var(--font-kannada);
+  --font-mono: var(--font-mono);
+
+  --text-hero: var(--text-hero);
+  --text-hero--line-height: var(--leading-hero);
+  --text-hero--letter-spacing: var(--tracking-hero);
+  --text-display: var(--text-display);
+  --text-display--line-height: var(--leading-display);
+  --text-display--letter-spacing: var(--tracking-display);
+  --text-title: var(--text-title);
+  --text-title--line-height: var(--leading-title);
+  --text-title--letter-spacing: var(--tracking-title);
+  --text-lead: var(--text-lead);
+  --text-lead--line-height: 1.5;
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--leading-body);
+  --text-small: var(--text-small);
+  --text-small--line-height: 1.45;
+  --text-label: var(--text-label);
+  --text-label--line-height: var(--leading-tight);
+  --text-label--letter-spacing: var(--tracking-label);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+
+  --container-container: var(--container);
+  --container-narrow: var(--container-narrow);
+  --container-measure: var(--measure);
+  --spacing-section: var(--space-section);
+  --spacing-gutter: var(--gutter);
+
+  --ease-glyph: var(--ease-out);
+  --ease-glyph-in-out: var(--ease-in-out);
+
+  --shadow-overlay: var(--shadow-overlay);
+}
+
+@utility wrap {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+@utility sr-only-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  &:focus {
+    position: fixed;
+    width: auto;
+    height: auto;
+    clip: auto;
+    top: 1rem;
+    left: 1rem;
+    z-index: 100;
+  }
+}
+
+/* Hide scrollbars on horizontally scrolling chip rows while keeping them scrollable. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
