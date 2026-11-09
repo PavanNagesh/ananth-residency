@@ -32,6 +32,16 @@ export const addressSchema = z.object({
     .trim()
     .regex(/^\d{6}$/, "Enter the 6-digit PIN code, like 580020."),
   isDefault: z.boolean().default(false),
+  lat: z.number().finite().nullable().default(null),
+  lng: z.number().finite().nullable().default(null),
+  accuracyM: z.number().int().min(0).max(100_000).nullable().default(null),
+}).superRefine((a, ctx) => {
+  if ((a.lat === null) !== (a.lng === null)) {
+    ctx.addIssue({ code: "custom", path: ["lat"], message: "The map pin is incomplete. Place the pin again." });
+  } else if (a.lat !== null && a.lng !== null && (a.lat < 6 || a.lat > 37.5 || a.lng < 68 || a.lng > 97.5)) {
+    // Also rejects 0,0 readings from a phone that could not get a GPS fix.
+    ctx.addIssue({ code: "custom", path: ["lat"], message: "That map pin is outside India. Move the pin to your address." });
+  }
 });
 
 export const placeOrderSchema = z.object({

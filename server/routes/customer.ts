@@ -105,6 +105,9 @@ const addressDto = (a: typeof addresses.$inferSelect): Address => ({
   landmark: a.landmark,
   area: a.area,
   pincode: a.pincode,
+  lat: a.lat,
+  lng: a.lng,
+  accuracyM: a.accuracyM,
   isDefault: a.isDefault,
 });
 

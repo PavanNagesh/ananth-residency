@@ -25,6 +25,9 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // Every test device "is" near Station Road, Hubballi and allows the site to read its location.
+    geolocation: { latitude: 15.3502, longitude: 75.1418, accuracy: 15 },
+    permissions: ["geolocation"],
   },
   projects: [
     // Phones

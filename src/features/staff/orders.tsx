@@ -7,7 +7,9 @@ import { buttonClasses } from "../../components/ui/button-classes";
 import { cn } from "../../components/ui/cn";
 import { TextField } from "../../components/ui/field";
 import { Icon } from "../../components/ui/icons";
+import { MapView } from "../../components/map";
 import { Badge, Button, Dialog, ErrorBlock, LoadingBlock, Notice } from "../../components/ui/primitives";
+import { accuracyText } from "../../lib/geolocation";
 import { api, errorMessage } from "../../lib/api";
 import { useToast } from "../../lib/toast";
 import { useResource } from "../../lib/use-resource";
@@ -249,6 +251,7 @@ function OrderCard({
           <br />
           {o.address.area} {o.address.pincode}
         </p>
+        <DeliveryMap order={o} />
       </div>
 
       <div className="grid gap-1.5">
@@ -306,6 +309,52 @@ function OrderCard({
         )}
       </div>
     </li>
+  );
+}
+
+/** The customer's map pin: a preview inside the card, and a large map in a sheet. Same tab, always. */
+function DeliveryMap({ order: o }: { order: Order }) {
+  const [shown, setShown] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const { lat, lng, accuracyM } = o.address;
+  if (lat === null || lat === undefined || lng === null || lng === undefined) {
+    return <p className="m-0 text-small text-ink-3">No map location shared. Use the address and landmark, or ask on the call.</p>;
+  }
+  const label = `Map: delivery location for order ${o.orderNo}, ${o.customerName}`;
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" icon="pin" aria-expanded={shown} onClick={() => setShown((v) => !v)}>
+          {shown ? "Hide map" : "Show on map"}
+        </Button>
+        {shown && (
+          <Button variant="ghost" size="sm" icon="arrowRight" onClick={() => setExpanded(true)}>
+            Expand map
+          </Button>
+        )}
+      </div>
+      {shown && (
+        <>
+          {/* A still preview so swiping the list never gets caught by the map; tap it to expand. */}
+          <button type="button" className="block w-full rounded-sm text-left" onClick={() => setExpanded(true)} aria-label={`Expand map for order ${o.orderNo}`}>
+            <MapView height={180} lat={lat} lng={lng} accuracyM={accuracyM} label={label} interactive={false} zoom={16} />
+          </button>
+          <p className="m-0 text-small text-ink-3">{accuracyText(accuracyM)}</p>
+        </>
+      )}
+      <Dialog
+        open={expanded}
+        onClose={() => setExpanded(false)}
+        wide
+        title={`${o.orderNo} · ${o.customerName}`}
+        description={`${o.address.line1}${o.address.landmark ? ` · Landmark: ${o.address.landmark}` : ""} · ${o.address.area} ${o.address.pincode}`}
+      >
+        <div className="grid gap-2">
+          {expanded && <MapView height="min(65dvh, 34rem)" lat={lat} lng={lng} accuracyM={accuracyM} label={label} zoom={17} />}
+          <p className="m-0 text-small text-ink-3">{accuracyText(accuracyM)} Pinch or use + and − to zoom.</p>
+        </div>
+      </Dialog>
+    </div>
   );
 }
 

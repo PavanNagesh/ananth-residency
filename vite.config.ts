@@ -33,6 +33,9 @@ export default defineConfig({
     },
   },
   preview: {
+    // Lets a temporary Cloudflare quick tunnel (https://*.trycloudflare.com) reach the preview,
+    // for testing on a phone: `cloudflared tunnel --url http://localhost:4173`.
+    allowedHosts: [".trycloudflare.com"],
     proxy: {
       "/api": {
         target: apiUrl,

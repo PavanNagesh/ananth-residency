@@ -53,7 +53,8 @@ export async function measureLayout(page: Page): Promise<LayoutReport> {
       .map((el) => `${el.tagName.toLowerCase()} "${label(el)}" (${Math.round(el.getBoundingClientRect().left)}–${Math.round(el.getBoundingClientRect().right)} of ${vw})`);
 
     const targets = [...scope.querySelectorAll("button, a[href], input, select, textarea, summary, [role=switch], [role=tab]")]
-      .filter((el) => visible(el) && !(el.tagName === "A" && el.closest("p")) && (el as HTMLInputElement).type !== "hidden")
+      // Inline text links are exempt from target size (WCAG 2.5.8), including the map's licence credit.
+      .filter((el) => visible(el) && !(el.tagName === "A" && el.closest("p, .leaflet-control-attribution")) && (el as HTMLInputElement).type !== "hidden")
       // Elements scrolled out of a horizontal row are still real targets: measure them all.
       .map((el) => {
         const r = el.getBoundingClientRect();

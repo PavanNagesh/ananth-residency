@@ -7,7 +7,8 @@ import { buttonClasses } from "../../components/ui/button-classes";
 import { cn } from "../../components/ui/cn";
 import { TextArea } from "../../components/ui/field";
 import { Icon, type IconName } from "../../components/ui/icons";
-import { Button, LoadingBlock, Notice } from "../../components/ui/primitives";
+import { LocationPicker, type Pin } from "../../components/map";
+import { Button, Dialog, LoadingBlock, Notice } from "../../components/ui/primitives";
 import { api, ApiError, errorMessage } from "../../lib/api";
 import { useCustomer } from "../../lib/auth";
 import { useCart } from "../../lib/cart";
@@ -32,6 +33,7 @@ export function CheckoutPage() {
   );
   const [addressId, setAddressId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const [pinFor, setPinFor] = useState<Address | null>(null);
   const [payment, setPayment] = useState<"cod" | "online">("cod");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +141,23 @@ export function CheckoutPage() {
                   ))}
                 </fieldset>
               )}
+              {(() => {
+                const chosen = addrs.data?.find((a) => a.id === addressId);
+                if (!chosen || adding || (chosen.lat !== null && chosen.lng !== null)) return null;
+                return (
+                  <Notice
+                    tone="warn"
+                    title="This address has no map location."
+                    action={
+                      <Button variant="primary" size="sm" icon="pin" onClick={() => setPinFor(chosen)}>
+                        Add map location
+                      </Button>
+                    }
+                  >
+                    Share where you are so the rider can find your door.
+                  </Notice>
+                );
+              })()}
               {adding ? (
                 <div className="rounded-md border border-line p-4">
                   <h3 className="m-0 mb-3 text-body font-semibold">New address</h3>
@@ -241,7 +260,59 @@ export function CheckoutPage() {
           The restaurant calls you to confirm before cooking. Food is usually ready in about {data.restaurant.prepTimeMinutes} minutes.
         </p>
       </div>
+      {pinFor && (
+        <PinDialog
+          address={pinFor}
+          onClose={() => setPinFor(null)}
+          onSaved={(a) => {
+            addrs.setData((list) => list?.map((x) => (x.id === a.id ? a : x)));
+            setPinFor(null);
+          }}
+        />
+      )}
     </PagePanel>
+  );
+}
+
+/** Adds or changes the map pin of a saved address without retyping it. */
+function PinDialog({ address, onClose, onSaved }: { address: Address; onClose: () => void; onSaved: (a: Address) => void }) {
+  const [pin, setPin] = useState<Pin>({ lat: address.lat, lng: address.lng, accuracyM: address.accuracyM });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  async function save() {
+    if (pin.lat === null || pin.lng === null) return setError("Use your current location or tap the map first.");
+    setBusy(true);
+    setError(undefined);
+    try {
+      const { id: _id, ...rest } = address;
+      void _id;
+      const r = await api<{ address: Address }>(`/me/addresses/${address.id}`, { method: "PUT", body: { ...rest, ...pin } });
+      onSaved(r.address);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={`Map location for ${address.label || "this address"}`}
+      description={addressLines(address)}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" busy={busy} onClick={() => void save()}>
+            Save location
+          </Button>
+        </div>
+      }
+    >
+      <LocationPicker value={pin} onChange={setPin} error={error} />
+    </Dialog>
   );
 }
 

@@ -248,6 +248,9 @@ export async function placeOrder(db: DB, input: PlaceOrderInput) {
       landmark: addr.landmark,
       area: addr.area,
       pincode: addr.pincode,
+      lat: addr.lat,
+      lng: addr.lng,
+      accuracyM: addr.accuracyM,
     };
 
     // Serialise sequence allocation per day.

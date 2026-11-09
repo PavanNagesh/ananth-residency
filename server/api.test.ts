@@ -112,6 +112,22 @@ describe("customer sign-in and addresses", () => {
     expect(ok.status).toBe(201);
     expect(ok.json.address.isDefault).toBe(true);
     addressId = ok.json.address.id;
+    expect(ok.json.address).toMatchObject({ lat: null, lng: null, accuracyM: null });
+  });
+  test("map pins need both coordinates, inside India", async () => {
+    const base = { line1: "12 Lamington Road", landmark: "Near LIC", area: "J C Nagar", pincode: "580020" };
+    const half = await customer("/me/addresses", { body: { ...base, lat: 15.35 } });
+    expect(half.status).toBe(422);
+    expect(half.json.fields.lat).toContain("incomplete");
+    const zero = await customer("/me/addresses", { body: { ...base, lat: 0, lng: 0 } });
+    expect(zero.status).toBe(422);
+    expect(zero.json.fields.lat).toContain("outside India");
+    const pinned = await customer(`/me/addresses/${addressId}`, {
+      method: "PUT",
+      body: { ...base, lat: 15.3502, lng: 75.1418, accuracyM: 12, isDefault: true },
+    });
+    expect(pinned.status).toBe(200);
+    expect(pinned.json.address).toMatchObject({ lat: 15.3502, lng: 75.1418, accuracyM: 12 });
   });
   test("protected routes need a session", async () => {
     const anon = client();
@@ -126,6 +142,8 @@ describe("placing orders", () => {
     const r = await customer("/orders", { body: { lines: [{ itemId: soup.id, qty: 1 }], addressId, paymentMethod: "cod" } });
     expect(r.status).toBe(201);
     expect(r.json.order).toMatchObject({ orderNo: "#001", status: "new", subtotalPaise: 18000, gstPaise: 900, deliveryFeePaise: 5000, totalPaise: 23900 });
+    // The restaurant sees the pin as it was when the order was placed.
+    expect(r.json.order.address).toMatchObject({ lat: 15.3502, lng: 75.1418, accuracyM: 12 });
   });
 
   test("free delivery on ₹500 and above, options priced per option", async () => {

@@ -84,3 +84,13 @@ dialog.sheet[open] {
   outline-offset: 2px;
   animation: ring 1.6s var(--ease-in-out) infinite;
 }
+
+/* ---- Maps (Leaflet) ------------------------------------------------------ */
+.ar-map-pin { background: none; border: 0; }
+.ar-map-pin svg { display: block; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.35)); }
+/* Finger-sized zoom buttons on touch screens (Leaflet's default is 30px). */
+/* Higher specificity than Leaflet's own rule, which loads later with the map. */
+.leaflet-container.leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
+.leaflet-container { font-family: var(--font-sans); background: var(--paper-sunken); }
+.leaflet-container .leaflet-control-attribution { font-size: 11px; }
+.leaflet-container :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

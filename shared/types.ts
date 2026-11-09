@@ -69,6 +69,11 @@ export type Address = {
   landmark: string;
   area: string;
   pincode: string;
+  /** Map pin; null when the customer did not share a location. */
+  lat: number | null;
+  lng: number | null;
+  /** GPS accuracy in metres, null when the pin was placed by hand. */
+  accuracyM: number | null;
   isDefault: boolean;
 };
 
@@ -81,7 +86,12 @@ export type OrderLine = {
   unitPricePaise: number;
 };
 
-export type AddressSnapshot = Omit<Address, "id" | "isDefault">;
+/** Copy of the address stored on an order. Orders placed before map pins existed have no lat/lng. */
+export type AddressSnapshot = Omit<Address, "id" | "isDefault" | "lat" | "lng" | "accuracyM"> & {
+  lat?: number | null;
+  lng?: number | null;
+  accuracyM?: number | null;
+};
 
 export type Order = {
   id: number;

@@ -89,8 +89,20 @@ test("customer can browse, fill a cart and place an order", async ({ page, reque
       await page.getByLabel("Landmark").fill("Opposite KLE Tech gate");
       await page.getByLabel("Area").fill("Vidyanagar");
       await page.getByLabel("PIN code").fill("580031");
+      await press(page.getByRole("button", { name: "Use my current location" }), info);
+      await expect(page.getByRole("region", { name: /drag the pin/ })).toBeVisible();
+      await expect(page.getByText(/accurate to about 15 m/)).toBeVisible();
       await checkScreen(page, info, "06-address");
       await press(page.getByRole("button", { name: "Save address" }), info);
+    } else if (await page.getByText("This address has no map location.").isVisible()) {
+      // Saved before map pins existed: add one from checkout.
+      await press(page.getByRole("button", { name: "Add map location" }), info);
+      const sheet = page.getByRole("dialog", { name: /Map location for/ });
+      await press(sheet.getByRole("button", { name: "Use my current location" }), info);
+      await expect(sheet.getByRole("region", { name: /drag the pin/ })).toBeVisible();
+      await checkScreen(page, info, "06-address-pin");
+      await press(sheet.getByRole("button", { name: "Save location" }), info);
+      await expect(page.getByText("This address has no map location.")).toBeHidden();
     }
     await expect(page.getByRole("radio", { name: /Pay on delivery/ })).toBeChecked();
     await checkScreen(page, info, "07-checkout");
@@ -137,6 +149,21 @@ test("restaurant staff can run the dashboard", async ({ page }, info) => {
       .filter({ hasText: formatPhone(`+91${phoneFor(info.project.name)}`) });
     await expect(card).toBeVisible();
     await checkScreen(page, info, "11-staff-orders");
+    // The customer's pin, in the card and then full size, without leaving the page.
+    const pages = page.context().pages().length;
+    await press(card.getByRole("button", { name: "Show on map" }), info);
+    await expect(card.getByRole("region", { name: new RegExp(`delivery location for order ${orderNo}`) })).toBeVisible();
+    await expect(card.locator(".leaflet-tile-loaded").first()).toBeVisible({ timeout: 20_000 });
+    await card.scrollIntoViewIfNeeded();
+    await checkScreen(page, info, "11b-staff-map");
+    await press(card.getByRole("button", { name: "Expand map", exact: true }), info);
+    const big = page.getByRole("dialog", { name: new RegExp(`^${orderNo}`) });
+    await expect(big.getByRole("region", { name: /delivery location/ })).toBeVisible();
+    await expect(big.locator(".leaflet-marker-icon")).toBeVisible();
+    await checkScreen(page, info, "11c-staff-map-expanded");
+    await press(big.getByRole("button", { name: "Close" }), info);
+    expect(page.context().pages().length, "map must not open a new tab").toBe(pages);
+    expect(page.url()).toContain("/staff");
     await press(card.getByRole("button", { name: "Confirmed on call" }), info);
     await expect(page.getByText(new RegExp(`Order ${orderNo}: Confirmed`))).toBeVisible();
   });

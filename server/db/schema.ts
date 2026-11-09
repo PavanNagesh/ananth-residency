@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -43,6 +44,11 @@ export const addresses = pgTable(
     landmark: text().notNull().default(""),
     area: text().notNull(),
     pincode: text().notNull(),
+    /** Map pin shared by the customer (GPS, adjusted by dragging). Null when not shared. */
+    lat: doublePrecision(),
+    lng: doublePrecision(),
+    /** GPS accuracy in metres when the pin came from the phone's location; null when placed by hand. */
+    accuracyM: integer("accuracy_m"),
     isDefault: boolean("is_default").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: createdAt(),
