@@ -11,6 +11,7 @@ import { Button, LoadingBlock, Notice } from "../../components/ui/primitives";
 import { api, ApiError, errorMessage } from "../../lib/api";
 import { useCustomer } from "../../lib/auth";
 import { useCart } from "../../lib/cart";
+import { storage } from "../../lib/storage";
 import { useMenu } from "../../lib/menu";
 import { useResource } from "../../lib/use-resource";
 import { AddressForm, addressLines } from "./address-form";
@@ -80,6 +81,7 @@ export function CheckoutPage() {
         },
       });
       cart.clear();
+      storage.set("ar.hasOrdered", true);
       if (res.razorpay) {
         const paid = await openRazorpay(res.razorpay).catch(() => null);
         if (paid) {
@@ -194,7 +196,7 @@ export function CheckoutPage() {
                 </li>
               ))}
             </ul>
-            <Link to="/" className="justify-self-start text-small font-semibold text-accent-text">
+            <Link to="/" className="-my-2 inline-flex min-h-11 items-center justify-self-start text-small font-semibold text-accent-text">
               Edit items
             </Link>
             <TextArea

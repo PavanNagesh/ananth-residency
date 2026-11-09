@@ -152,12 +152,26 @@ export function Dialog({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const id = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
+    if (open && !d.open) {
+      if (typeof d.showModal === "function") d.showModal();
+      else {
+        // iOS 15.0–15.3 and other browsers without <dialog>: show it as a fixed sheet.
+        d.setAttribute("open", "");
+        d.classList.add("sheet-fallback");
+      }
+      // Start on the title (read out by screen readers) instead of the Close button,
+      // which Safari would otherwise draw a focus ring around on touch screens.
+      titleRef.current?.focus();
+    }
+    if (!open && d.hasAttribute("open")) {
+      if (typeof d.close === "function") d.close();
+      else d.removeAttribute("open");
+    }
   }, [open]);
 
   return (
@@ -181,7 +195,7 @@ export function Dialog({
         <div className="flex max-h-[inherit] flex-col">
           <div className="flex items-start justify-between gap-4 border-b border-line px-5 pt-4 pb-3">
             <div className="grid gap-0.5 pt-1.5">
-              <h2 id={`${id}-title`} className="m-0 font-display text-title font-semibold">
+              <h2 id={`${id}-title`} ref={titleRef} tabIndex={-1} className="m-0 font-display text-title font-semibold outline-none">
                 {title}
               </h2>
               {description && <div className="text-small text-ink-2">{description}</div>}
@@ -323,7 +337,7 @@ export function QtyStepper({
     <div className="inline-flex items-center rounded-sm border border-line-strong bg-paper-raised" role="group" aria-label={`Quantity of ${name}`}>
       <button
         type="button"
-        className="inline-flex size-11 items-center justify-center rounded-l-sm text-ink hover:bg-paper-sunken disabled:opacity-40 sm:size-9"
+        className="inline-flex size-11 items-center justify-center rounded-l-sm text-ink hover:bg-paper-sunken disabled:opacity-40 pointer-fine:size-9"
         aria-label={removes ? `Remove ${name}` : `One less ${name}`}
         disabled={min > 0 && qty <= min}
         onClick={() => onChange(qty - 1)}
@@ -335,7 +349,7 @@ export function QtyStepper({
       </span>
       <button
         type="button"
-        className="inline-flex size-11 items-center justify-center rounded-r-sm text-ink hover:bg-paper-sunken disabled:opacity-40 sm:size-9"
+        className="inline-flex size-11 items-center justify-center rounded-r-sm text-ink hover:bg-paper-sunken disabled:opacity-40 pointer-fine:size-9"
         aria-label={`One more ${name}`}
         disabled={qty >= max}
         onClick={() => onChange(qty + 1)}

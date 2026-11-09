@@ -42,6 +42,13 @@ const paths = {
   utensils: "M7 3v8 M4.5 3v5a2.5 2.5 0 0 0 5 0V3 M7 11v10 M17 21V3c-2 1-3.5 3.5-3.5 7v3H17",
   wallet: "M4 7h15a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z M4 7l11-3v3 M16 13.5h.01",
   card: "M3 6h18v12H3V6z M3 10h18 M7 15h3",
+  share: "M12 3v12 M8 7l4-4 4 4 M5 11v9h14v-9",
+  download: "M12 4v11 M8 11l4 4 4-4 M5 20h14",
+  copy: "M8 8h12v12H8V8z M16 8V4H4v12h4",
+  addSquare: "M4 4h16v16H4V4z M12 8v8 M8 12h8",
+  smartphone: "M7 2h10v20H7V2z M11 18.5h2",
+  message: "M4 5h16v11H9l-5 4V5z",
+  qr: "M4 4h6v6H4V4z M14 4h6v6h-6V4z M4 14h6v6H4v-6z M14 14h2v2h-2v-2z M18 18h2v2h-2v-2z M14 18h2 M18 14h2",
 } as const;
 
 export type IconName = keyof typeof paths;

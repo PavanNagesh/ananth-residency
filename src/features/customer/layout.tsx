@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { formatPhone } from "../../../shared/phone";
 import { Wordmark } from "../../components/brand";
+import { InstallButton } from "../../components/install-app";
 import { cn } from "../../components/ui/cn";
 import { Icon } from "../../components/ui/icons";
 import { useCustomer } from "../../lib/auth";
@@ -10,7 +11,7 @@ import { useMenu } from "../../lib/menu";
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "inline-flex min-h-11 items-center gap-2 rounded-sm px-3 text-small font-semibold text-on-brand no-underline transition-colors duration-(--dur-quick) hover:bg-white/8",
+    "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-sm px-3 text-small font-semibold text-on-brand no-underline transition-colors duration-(--dur-quick) hover:bg-white/8",
     isActive && "bg-white/10",
   );
 
@@ -52,8 +53,11 @@ export function SiteFooter() {
           </a>
         </p>
       )}
+      <div className="my-2">
+        <InstallButton variant="on-brand" />
+      </div>
       <p className="m-0">
-        <Link to="/staff" className="text-on-brand-2">
+        <Link to="/staff" className="inline-flex min-h-11 items-center text-on-brand-2">
           Restaurant staff sign in
         </Link>
       </p>

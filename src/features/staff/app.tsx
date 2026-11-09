@@ -7,6 +7,7 @@ import { TextField } from "../../components/ui/field";
 import { Icon, type IconName } from "../../components/ui/icons";
 import { Button, LoadingBlock, Switch } from "../../components/ui/primitives";
 import { api, ApiError, errorMessage } from "../../lib/api";
+import { useManifest } from "../../lib/install";
 import { useToast } from "../../lib/toast";
 import { AnnouncementsPage } from "./announcements";
 import { MenuManager } from "./menu";
@@ -37,6 +38,8 @@ const TITLES: Record<string, string> = {
 };
 
 export default function StaffApp() {
+  // Installing from here adds "Ananth Orders", which opens straight to the orders board.
+  useManifest("/staff.webmanifest");
   const [user, setUser] = useState<StaffUser | null | undefined>(undefined);
   const [settings, setSettings] = useState<Settings | null>(null);
   const location = useLocation();

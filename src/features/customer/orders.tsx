@@ -4,6 +4,7 @@ import { formatPercentFromBps, formatRupees } from "../../../shared/bill";
 import { formatPhone } from "../../../shared/phone";
 import { formatDateTime, formatTime } from "../../../shared/time";
 import { FINAL_STATUSES, STATUS_LABEL, type Order, type OrderStatus, type PlaceOrderResponse } from "../../../shared/types";
+import { InstallBanner } from "../../components/install-app";
 import { buttonClasses } from "../../components/ui/button-classes";
 import { cn } from "../../components/ui/cn";
 import { Icon } from "../../components/ui/icons";
@@ -96,6 +97,7 @@ export function OrderPage() {
               The restaurant will call you on {formatPhone(o.customerPhone)} to confirm it.
             </Notice>
           )}
+          {justPlaced && <InstallBanner force />}
           {o.status === "pending_payment" && (
             <Notice tone="warn" title="Payment not completed." live>
               <p className="m-0 mb-3">The kitchen sees your order once it is paid. Try again, or pay when it arrives.</p>
@@ -185,7 +187,11 @@ function BillRow({ label, value }: { label: string; value: string }) {
 
 function Timeline({ order }: { order: Order }) {
   const currentIndex = STEPS.indexOf(order.status);
-  const at = (s: OrderStatus) => order.events.findLast((e) => e.status === s)?.at;
+  // Latest event for a status (a plain loop: Array.findLast needs iOS 15.4+).
+  const at = (s: OrderStatus) => {
+    for (let i = order.events.length - 1; i >= 0; i--) if (order.events[i]!.status === s) return order.events[i]!.at;
+    return undefined;
+  };
   const live = !FINAL_STATUSES.includes(order.status);
   return (
     <section aria-labelledby="status-h" className="grid gap-3">

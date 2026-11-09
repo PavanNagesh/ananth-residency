@@ -12,6 +12,9 @@
   }
 }
 
+/* Phones held sideways: very little height, so screens drop decoration. */
+@custom-variant short (@media (max-height: 480px) and (orientation: landscape));
+
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-raised: var(--paper-raised);

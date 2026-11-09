@@ -7,7 +7,9 @@ import { Badge, Button, Dialog, ErrorBlock, LoadingBlock, Notice, Switch } from 
 import { api, ApiError, errorMessage } from "../../lib/api";
 import { useToast } from "../../lib/toast";
 import { useResource } from "../../lib/use-resource";
+import { InstallButton } from "../../components/install-app";
 import { StaffPageHeader, useStaff } from "./app";
+import { ShareOrderingLink } from "./share-link";
 
 type Draft = {
   restaurantName: string;
@@ -85,7 +87,12 @@ export function SettingsPage() {
 
   return (
     <>
-      <StaffPageHeader title="Settings" description={owner ? undefined : "Only the owner can change these. You can pause orders from the switch at the top."} />
+      <StaffPageHeader
+        title="Settings"
+        description={owner ? undefined : "Only the owner can change these. You can pause orders from the switch at the top."}
+        actions={<InstallButton label="Install orders screen on this device" appName="the orders dashboard" />}
+      />
+      <ShareOrderingLink restaurantName={settings.restaurantName} />
       <form onSubmit={save} noValidate className="grid max-w-2xl gap-10">
         <fieldset disabled={!owner} className="m-0 grid gap-4 border-0 p-0">
           <legend className="mb-4 font-display text-title font-semibold">Delivery and bill</legend>
@@ -241,7 +248,7 @@ export function TeamPage() {
               </label>
               <select
                 id={`role-${u.id}`}
-                className="min-h-11 rounded-sm border border-line-strong bg-paper-raised px-3 text-small"
+                className="min-h-11 rounded-sm border border-line-strong bg-paper-raised px-3 text-body"
                 value={u.role}
                 disabled={u.id === me.id}
                 onChange={(e) => void update(u, { role: e.target.value })}

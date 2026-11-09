@@ -42,6 +42,29 @@ bun run db:seed -- --reset  # replace the menu with the seed in server/db/menu-d
 bun run db:generate         # after changing server/db/schema.ts, create a migration in drizzle/
 ```
 
+## Phones, tablets and browsers
+
+The site is built mobile-first and checked on phones, tablets, laptops and desktops.
+
+- **Browsers:** Chrome and Edge 87+, Safari on iPhone and iPad (iOS 14+), Samsung Internet 14+, Firefox 90+. Newer colour formats get plain fallbacks, and sheets fall back to a simple overlay on iOS 15.0–15.3.
+- **Touch:** controls are at least 44 px on touch screens, inputs are 16 px so iPhones don't zoom, and double-tap zoom is off on buttons.
+- **Home screen:** customers can add the site to their home screen. Chrome and Samsung Internet show an install button; iPhones get Share → Add to Home Screen steps. The offer appears after a first order and on the Account page.
+- **Restaurant tablet:** on *Staff → Settings*, "Install orders screen on this device" adds an **Ananth Orders** app that opens straight to the orders board.
+- **Sharing:** *Staff → Settings* has the ordering link, a WhatsApp share, and a QR code to download for menus, bills and the counter.
+- **Weak connections:** a service worker keeps the app shell, fonts and photo, so repeat visits open fast. A dropped connection shows the app's own "you seem to be offline" message. Menu, orders and prices always come live from the server.
+
+### Device tests
+
+`e2e/devices.e2e.ts` runs a full customer order and a staff session on 11 device profiles, using real Chromium, Firefox and WebKit (Safari's engine): small Android, Pixel 7, iPhone SE, iPhone 15 Pro Max, iPhone landscape, Galaxy Tab, iPad Mini, iPad landscape, a 1366 px laptop, a 1440 px MacBook, and a 1920 px Firefox desktop. On every screen it checks for sideways scrolling, content cut off at the edge, tap targets under 24 px (under 40 px on touch screens), inputs that make iOS zoom, and browser errors.
+
+```bash
+npx playwright install chromium firefox webkit   # once
+bun run test:devices                             # needs the dev database and OWNER_* in .env
+bun run test:devices:report                      # open the HTML report
+```
+
+Screenshots of every screen on every device are saved in `test-results/devices/`.
+
 ## Deploy to Vercel
 
 The build is configured in `vercel.json`: Bun installs and builds, `dist/` is served as the site, and `api/index.ts` becomes one Node 22 function that handles every `/api/*` request. Every other path falls back to `index.html`.

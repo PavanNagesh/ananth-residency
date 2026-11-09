@@ -7,7 +7,7 @@ export function Wordmark({ to = "/", size = "md", suffix }: { to?: string; size?
   return (
     <Link
       to={to}
-      className="group inline-flex items-center gap-3 rounded-sm no-underline"
+      className="group inline-flex min-h-11 items-center gap-3 rounded-sm no-underline"
     >
       {BRAND.logo ? (
         <img src={BRAND.logo} alt="" aria-hidden="true" className={size === "sm" ? "h-9 w-auto" : "h-12 w-auto"} />

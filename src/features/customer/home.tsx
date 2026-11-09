@@ -7,6 +7,7 @@ import { cn } from "../../components/ui/cn";
 import { controlClasses } from "../../components/ui/field";
 import { Icon } from "../../components/ui/icons";
 import { Button, Dialog, ErrorBlock, LoadingBlock, Notice, QtyStepper, VegMark } from "../../components/ui/primitives";
+import { InstallBanner } from "../../components/install-app";
 import { useCart } from "../../lib/cart";
 import { useMenu } from "../../lib/menu";
 import { useToast } from "../../lib/toast";
@@ -41,27 +42,36 @@ function Hero({ data }: { data?: MenuResponse }) {
   const r = data?.restaurant;
   const threshold = data ? formatRupees(data.pricing.freeDeliveryThresholdPaise) : "₹500";
   return (
-    <section aria-labelledby="hero-title" className="wrap pt-6 pb-10 sm:pt-10 sm:pb-14">
-      <h1 id="hero-title" className="m-0 max-w-[15ch] font-display text-hero font-semibold text-on-brand">
+    <section aria-labelledby="hero-title" className="wrap pt-2 pb-6 sm:pt-6 sm:pb-10 lg:pt-8 lg:pb-12 short:pt-1 short:pb-4">
+      <h1 id="hero-title" className="m-0 max-w-[15ch] font-display text-hero font-semibold text-on-brand md:max-w-[22ch] short:max-w-none short:text-[1.75rem]">
         Pure vegetarian. Delivered from our kitchen.
       </h1>
-      <p className="mt-4 mb-0 max-w-measure text-lead text-on-brand-2">
-        Order from the Ananth Residency kitchen on Station Road, Hubballi. Free delivery on orders of {threshold} and above.
+      <p className="mt-3 mb-0 max-w-measure text-body text-on-brand-2 sm:mt-4 sm:text-lead short:hidden">
+        <span className="max-sm:hidden">Order from the Ananth Residency kitchen on Station Road, Hubballi. </span>
+        Free delivery on orders of {threshold} and above.
       </p>
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-6 sm:gap-3 short:mt-3">
         {r && (
           <p className="m-0 inline-flex min-h-11 items-center gap-2.5 rounded-sm bg-black/25 px-3.5 text-small font-semibold text-on-brand">
             <span
               aria-hidden="true"
               className={cn("size-2.5 rounded-pill", r.acceptingOrders ? "bg-[oklch(0.78_0.16_145)]" : "bg-[oklch(0.8_0.14_70)]")}
             />
-            {r.acceptingOrders ? `Taking orders · ready in about ${r.prepTimeMinutes} min` : "Not taking orders right now"}
+            {r.acceptingOrders ? (
+              <>
+                <span className="sm:hidden">Open · about {r.prepTimeMinutes} min</span>
+                <span className="max-sm:hidden">Taking orders · ready in about {r.prepTimeMinutes} min</span>
+              </>
+            ) : (
+              "Not taking orders right now"
+            )}
           </p>
         )}
         {r && (
-          <a href={`tel:${r.phone}`} className={buttonClasses("on-brand", "md")}>
+          <a href={`tel:${r.phone}`} className={buttonClasses("on-brand", "md")} aria-label={`Call ${formatPhone(r.phone)}`}>
             <Icon name="phone" size={18} />
-            Call {formatPhone(r.phone)}
+            <span className="sm:hidden">Call</span>
+            <span className="max-sm:hidden">Call {formatPhone(r.phone)}</span>
           </a>
         )}
       </div>
@@ -79,60 +89,78 @@ function MenuBody({ data }: { data: MenuResponse }) {
       .filter((c) => c.items.length > 0);
   }, [data.categories, q]);
   const matchCount = categories.reduce((n, c) => n + c.items.length, 0);
-  const active = useScrollSpy(categories.map((c) => `cat-${c.id}`));
+  const searchRef = useRef<HTMLInputElement>(null);
+  const chipsRef = useRef<HTMLElement>(null);
+  const active = useScrollSpy(categories.map((c) => `cat-${c.id}`), chipsRef);
 
   return (
     <>
-      <div className="wrap grid gap-3 pt-6">
+      <div className="wrap grid gap-3 pt-5 sm:pt-6">
         {!data.restaurant.acceptingOrders && (
           <Notice tone="warn" title="We are not taking delivery orders right now.">
             {data.restaurant.pausedMessage} You can still browse the menu.
           </Notice>
         )}
+        <InstallBanner className="sm:hidden" />
         {data.announcements.map((a) => (
           <Notice key={a.id} tone={a.kind === "alert" ? "warn" : a.kind === "offer" ? "ok" : "info"}>
             <span className="text-ink">{a.text}</span>
           </Notice>
         ))}
+        <div className="relative lg:max-w-[calc(100%-24rem)]">
+          <label htmlFor="menu-search" className="sr-only">
+            Search the menu
+          </label>
+          <Icon name="search" size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" />
+          <input
+            id="menu-search"
+            ref={searchRef}
+            type="search"
+            enterKeyHint="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            placeholder="Search dishes, like paneer or naan"
+            className={cn(controlClasses, "pl-10")}
+            autoComplete="off"
+          />
+        </div>
       </div>
 
-      {/* Sticky search + category jump bar */}
-      <div className="sticky top-0 z-20 mt-4 border-b border-line bg-paper/95 supports-[backdrop-filter]:bg-paper/90">
-        <div className="wrap grid gap-2 py-3 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
-          <div className="grid gap-2">
-            <div className="relative">
-              <label htmlFor="menu-search" className="sr-only">
-                Search the menu
-              </label>
-              <Icon name="search" size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" />
-              <input
-                id="menu-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search dishes, like paneer or naan"
-                className={cn(controlClasses, "pl-10")}
-                autoComplete="off"
-              />
-            </div>
-            <nav aria-label="Menu categories" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
-              {categories.map((c) => (
-                <a
-                  key={c.id}
-                  href={`#cat-${c.id}`}
-                  aria-current={active === `cat-${c.id}` ? "true" : undefined}
-                  className={cn(
-                    "inline-flex min-h-9 shrink-0 items-center rounded-pill border px-3.5 text-small font-semibold whitespace-nowrap no-underline transition-colors duration-(--dur-quick)",
-                    active === `cat-${c.id}`
-                      ? "border-brand bg-brand text-on-brand"
-                      : "border-line bg-paper-raised text-ink-2 hover:border-line-strong hover:text-ink",
-                  )}
-                >
-                  {c.name}
-                </a>
-              ))}
-            </nav>
-          </div>
+      {/* Pinned category row. Search scrolls away on small screens; the icon jumps back to it. */}
+      <div className="sticky top-0 z-20 mt-3 border-b border-line bg-paper/95">
+        <div className="wrap flex items-center gap-1.5 py-2">
+          <button
+            type="button"
+            aria-label="Search the menu"
+            onClick={() => {
+              const el = searchRef.current;
+              if (!el) return;
+              el.scrollIntoView({ block: "center", behavior: "smooth" });
+              el.focus({ preventScroll: true });
+            }}
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-pill border border-line bg-paper-raised text-ink-2 hover:text-ink pointer-fine:size-9"
+          >
+            <Icon name="search" size={18} />
+          </button>
+          <nav ref={chipsRef} aria-label="Menu categories" className="no-scrollbar -my-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto py-1 pr-1">
+            {categories.map((c) => (
+              <a
+                key={c.id}
+                href={`#cat-${c.id}`}
+                data-cat={`cat-${c.id}`}
+                aria-current={active === `cat-${c.id}` ? "true" : undefined}
+                className={cn(
+                  "inline-flex min-h-11 shrink-0 items-center rounded-pill border px-4 text-small font-semibold whitespace-nowrap no-underline transition-colors duration-(--dur-quick) pointer-fine:min-h-9 pointer-fine:px-3.5",
+                  active === `cat-${c.id}`
+                    ? "border-brand bg-brand text-on-brand"
+                    : "border-line bg-paper-raised text-ink-2 hover:border-line-strong hover:text-ink",
+                )}
+              >
+                {c.name}
+              </a>
+            ))}
+          </nav>
         </div>
       </div>
 
@@ -148,7 +176,7 @@ function MenuBody({ data }: { data: MenuResponse }) {
           ))}
         </div>
         <aside aria-label="Your order" className="hidden lg:block">
-          <div className="sticky top-36 mt-6 rounded-md border border-line bg-paper-raised p-5">
+          <div className="sticky top-20 mt-6 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-md border border-line bg-paper-raised p-5">
             <h2 className="m-0 mb-4 font-display text-title font-semibold">Your order</h2>
             <CartContents />
           </div>
@@ -160,7 +188,7 @@ function MenuBody({ data }: { data: MenuResponse }) {
 
 function CategorySection({ category }: { category: MenuCategory }) {
   return (
-    <section id={`cat-${category.id}`} aria-labelledby={`cat-${category.id}-title`} className="scroll-mt-40 pt-8">
+    <section id={`cat-${category.id}`} aria-labelledby={`cat-${category.id}-title`} className="scroll-mt-20 pt-6 sm:pt-8">
       <div className="mb-2 flex items-baseline justify-between gap-4 border-b border-line pb-2">
         <h2 id={`cat-${category.id}-title`} className="m-0 font-display text-display font-semibold">
           {category.name}
@@ -290,8 +318,8 @@ function OptionPicker({ item, open, onClose }: { item: MenuItem; open: boolean; 
   );
 }
 
-/** Highlights the category chip for the section currently near the top of the screen. */
-function useScrollSpy(ids: string[]) {
+/** Highlights the category chip for the section near the top, and slides that chip into view. */
+function useScrollSpy(ids: string[], scroller: React.RefObject<HTMLElement | null>) {
   const [active, setActive] = useState<string | null>(ids[0] ?? null);
   const key = ids.join(",");
   const visible = useRef(new Map<string, boolean>());
@@ -306,18 +334,24 @@ function useScrollSpy(ids: string[]) {
         const first = els.find((el) => visible.current.get(el.id));
         if (first) setActive(first.id);
       },
-      { rootMargin: "-160px 0px -55% 0px" },
+      // Below the pinned category row, top 45% of the screen.
+      { rootMargin: "-72px 0px -55% 0px" },
     );
     els.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
   }, [key]);
 
-  // Keep the active chip in view inside the horizontal scroller.
+  // Scroll only the chip row (never the page), so the page does not jump.
   useEffect(() => {
-    if (!active) return;
-    const chip = document.querySelector<HTMLAnchorElement>(`a[href="#${active}"]`);
-    chip?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-  }, [active]);
+    const row = scroller.current;
+    if (!active || !row) return;
+    const chip = row.querySelector<HTMLElement>(`[data-cat="${active}"]`);
+    if (!chip) return;
+    const left = chip.offsetLeft - row.offsetLeft;
+    const target = left - (row.clientWidth - chip.offsetWidth) / 2;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    row.scrollTo({ left: Math.max(0, target), behavior: reduce ? "auto" : "smooth" });
+  }, [active, scroller]);
 
   return active;
 }

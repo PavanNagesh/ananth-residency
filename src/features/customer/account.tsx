@@ -2,7 +2,9 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { formatPhone } from "../../../shared/phone";
 import type { Address, Customer } from "../../../shared/types";
+import { InstallButton } from "../../components/install-app";
 import { TextField } from "../../components/ui/field";
+import { useInstall } from "../../lib/install";
 import { Badge, Button, ErrorBlock, IconButton, LoadingBlock } from "../../components/ui/primitives";
 import { api, errorMessage } from "../../lib/api";
 import { useCustomer } from "../../lib/auth";
@@ -68,6 +70,8 @@ export function AccountPage() {
             </Button>
           </form>
         </section>
+
+        <InstallSection />
 
         <section aria-labelledby="addr-h" className="grid gap-4">
           <h2 id="addr-h" className="m-0 font-display text-title font-semibold">
@@ -141,5 +145,19 @@ export function AccountPage() {
         </Button>
       </div>
     </PagePanel>
+  );
+}
+
+function InstallSection() {
+  const install = useInstall();
+  if (!install.canPrompt && !install.needsIOSSteps) return null;
+  return (
+    <section aria-labelledby="install-h" className="grid gap-3">
+      <h2 id="install-h" className="m-0 font-display text-title font-semibold">
+        Order faster
+      </h2>
+      <p className="m-0 text-ink-2">Keep Ananth Residency on your home screen and open the menu in one tap.</p>
+      <InstallButton className="justify-self-start" />
+    </section>
   );
 }

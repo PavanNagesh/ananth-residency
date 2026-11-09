@@ -13,7 +13,7 @@ export function buttonClasses(variant: Variant = "primary", size: Size = "md", c
     "transition-[background-color,border-color,color,transform] duration-(--dur-quick) ease-glyph",
     !className?.includes("justify-") && "justify-center",
     "active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 aria-disabled:cursor-not-allowed aria-disabled:opacity-45",
-    size === "sm" && "min-h-11 px-3.5 text-small sm:min-h-9",
+    size === "sm" && "min-h-11 px-3.5 text-small pointer-fine:min-h-9",
     size === "md" && "min-h-11 px-5 text-body",
     size === "lg" && "min-h-13 px-6 text-body",
     variant === "accent" && "border-transparent bg-accent text-on-accent hover:bg-[color-mix(in_oklch,var(--accent)_88%,var(--ink))]",

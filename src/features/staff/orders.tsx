@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatRupees } from "../../../shared/bill";
 import { formatPhone } from "../../../shared/phone";
-import { formatTime, minutesAgo } from "../../../shared/time";
+import { formatDateTime, formatTime, istDate, minutesAgo } from "../../../shared/time";
 import { ACTIVE_STATUSES, STATUS_LABEL, type Order, type StaffOrdersResponse } from "../../../shared/types";
 import { buttonClasses } from "../../components/ui/button-classes";
 import { cn } from "../../components/ui/cn";
@@ -107,10 +107,11 @@ export function OrdersBoard() {
       )}
 
       {board.data && (
-        <dl className="mb-6 grid grid-cols-3 gap-3 sm:max-w-xl">
+        <dl className="mb-6 grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-3">
+          {/* Narrow phones: two columns, sales on its own row so large totals never overflow. */}
           <Stat label="Waiting" value={String(unack)} highlight={unack > 0} />
           <Stat label="Orders today" value={String(board.data.summary.ordersToday)} />
-          <Stat label="Sales today" value={formatRupees(board.data.summary.revenueTodayPaise)} />
+          <Stat label="Sales today" value={formatRupees(board.data.summary.revenueTodayPaise)} className="col-span-2 sm:col-span-1" />
         </dl>
       )}
 
@@ -180,11 +181,11 @@ export function OrdersBoard() {
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function Stat({ label, value, highlight, className }: { label: string; value: string; highlight?: boolean; className?: string }) {
   return (
-    <div className={cn("rounded-md border px-4 py-3", highlight ? "border-accent bg-accent text-on-accent" : "border-line bg-paper-raised")}>
+    <div className={cn("min-w-0 rounded-md border px-4 py-3", highlight ? "border-accent bg-accent text-on-accent" : "border-line bg-paper-raised", className)}>
       <dt className={cn("text-small", highlight ? "text-on-accent" : "text-ink-2")}>{label}</dt>
-      <dd className="num m-0 font-display text-title font-semibold">{value}</dd>
+      <dd className="num m-0 font-display text-title font-semibold break-words">{value}</dd>
     </div>
   );
 }
@@ -221,7 +222,10 @@ function OrderCard({
             {o.orderNo} <span className="sr-only">, {STATUS_LABEL[o.status]}</span>
           </h2>
           <span className="text-small text-ink-2">
-            <time dateTime={o.createdAt}>{formatTime(o.createdAt)}</time> · {mins < 1 ? "just now" : `${mins} min ago`}
+            {/* Order numbers restart daily, so an unfinished order from an earlier day shows its date. */}
+            <time dateTime={o.createdAt}>{istDate(new Date(o.createdAt)) === istDate(new Date(now)) ? formatTime(o.createdAt) : formatDateTime(o.createdAt)}</time>
+            {" · "}
+            {mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 24 * 60 ? `${Math.floor(mins / 60)} h ago` : `${Math.floor(mins / 1440)} days ago`}
           </span>
         </div>
         <div className="flex flex-wrap justify-end gap-1.5">
@@ -350,7 +354,7 @@ function CancelDialog({ order, onClose, onConfirm }: { order: Order | null; onCl
               aria-pressed={reason === r}
               onClick={() => setReason(r)}
               className={cn(
-                "min-h-11 rounded-sm border px-3 text-small font-medium sm:min-h-9",
+                "min-h-11 rounded-sm border px-3 text-small font-medium pointer-fine:min-h-9",
                 reason === r ? "border-brand bg-paper-sunken text-ink" : "border-line text-ink-2 hover:border-line-strong",
               )}
             >

@@ -24,13 +24,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex flex-col items-center gap-2 px-4 lg:bottom-6"
+        // Phones: above the cart bar. Wide screens: top centre, clear of the dish rows and the cart.
+        // Never takes taps, so it cannot cover a button the customer wants next.
+        className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex flex-col items-center gap-2 px-4 lg:top-4 lg:bottom-auto"
       >
         {toasts.map((t) => (
           <div
             key={t.id}
             className={cn(
-              "pointer-events-auto flex max-w-md items-center gap-2.5 rounded-md bg-ink px-4 py-3 text-small font-medium text-paper shadow-overlay",
+              "flex max-w-md items-center gap-2.5 rounded-md bg-ink px-4 py-3 text-small font-medium text-paper shadow-overlay",
             )}
           >
             <Icon name={t.tone === "danger" ? "alert" : t.tone === "ok" ? "check" : "info"} size={18} />
