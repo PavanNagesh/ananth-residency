@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import { computeBill, type Pricing } from "../shared/bill.js";
+import { computeBill, formatRupees, type Pricing } from "../shared/bill.js";
 import { formatOrderNo, istDate } from "../shared/time.js";
 import type {
   AddressSnapshot,
@@ -14,6 +14,7 @@ import type { DB } from "./db/index.js";
 import { addresses, announcements, categories, itemVariants, menuItems, orderEvents, orders, settings } from "./db/schema.js";
 import { env } from "./env.js";
 import { HttpError } from "./http.js";
+import { MAX_ORDER_TOTAL_PAISE } from "./security.js";
 
 type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
 type Q = DB | Tx;
@@ -242,6 +243,11 @@ export async function placeOrder(db: DB, input: PlaceOrderInput) {
 
     const subtotal = lines.reduce((sum, l) => sum + l.unitPricePaise * l.qty, 0);
     const bill = computeBill(subtotal, pricingOf(s));
+    if (bill.totalPaise > MAX_ORDER_TOTAL_PAISE) {
+      throw new HttpError(422, `Online orders are limited to ${formatRupees(MAX_ORDER_TOTAL_PAISE)}. Call the restaurant for a larger order.`, {
+        lines: "Order total is over the online limit.",
+      });
+    }
     const address: AddressSnapshot = {
       label: addr.label,
       line1: addr.line1,

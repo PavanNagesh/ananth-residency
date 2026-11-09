@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   addressSchema,
@@ -17,6 +17,8 @@ import { addresses, customers, orderEvents, orders } from "../db/schema.js";
 import { DEV_OTP_CODE, env } from "../env.js";
 import { body, HttpError, idParam, notFound, type AppEnv } from "../http.js";
 import { createRazorpayOrder, verifyPaymentSignature } from "../razorpay.js";
+import { check, clientIp, hit, LIMITS } from "../security.js";
+import { z } from "zod";
 import { loadSettings, orderDto, ordersWithEvents, placeOrder } from "../services.js";
 
 export const customerRoutes = new Hono<AppEnv>();
@@ -32,8 +34,9 @@ async function signInPhone(phone: string, firebaseUid: string | null) {
       target: customers.phone,
       set: { lastLoginAt: new Date(), ...(firebaseUid ? { firebaseUid } : {}) },
     })
-    .returning({ id: customers.id, phone: customers.phone, name: customers.name });
-  return row!;
+    .returning({ id: customers.id, phone: customers.phone, name: customers.name, v: customers.sessionVersion });
+  const { v, ...customer } = row!;
+  return { customer, v };
 }
 
 customerRoutes.get("/auth/config", (c) =>
@@ -43,6 +46,7 @@ customerRoutes.get("/auth/config", (c) =>
 customerRoutes.post("/auth/firebase", async (c) => {
   const projectId = env.firebaseProjectId;
   if (!projectId) throw new HttpError(503, "Phone sign-in is not set up yet. Call the restaurant to order.");
+  await hit(getDb(), LIMITS.customerSignInPerIp, clientIp(c));
   const { idToken } = await body(c, firebaseLoginSchema);
   let verified: { uid: string; phone: string };
   try {
@@ -50,17 +54,18 @@ customerRoutes.post("/auth/firebase", async (c) => {
   } catch {
     throw new HttpError(401, "We could not verify that code. Request a new code and try again.");
   }
-  const customer = await signInPhone(verified.phone, verified.uid);
-  await issueSession(c, "customer", { sub: String(customer.id) });
+  const { customer, v } = await signInPhone(verified.phone, verified.uid);
+  await issueSession(c, "customer", { sub: String(customer.id), v });
   return c.json({ customer: customer satisfies Customer });
 });
 
 customerRoutes.post("/auth/dev-otp", async (c) => {
   if (!env.devOtpEnabled) throw new HttpError(503, "Phone sign-in is not set up yet. Call the restaurant to order.");
+  await hit(getDb(), LIMITS.customerSignInPerIp, clientIp(c));
   const { phone, code } = await body(c, devOtpSchema);
   if (code !== DEV_OTP_CODE) throw new HttpError(401, "That code is not right. In development the code is 123456.", { code: "Enter 123456." });
-  const customer = await signInPhone(phone, null);
-  await issueSession(c, "customer", { sub: String(customer.id) });
+  const { customer, v } = await signInPhone(phone, null);
+  await issueSession(c, "customer", { sub: String(customer.id), v });
   return c.json({ customer: customer satisfies Customer });
 });
 
@@ -70,13 +75,23 @@ customerRoutes.get("/auth/session", async (c) => {
   const id = s ? Number(s.sub) : NaN;
   if (!Number.isInteger(id)) return c.json({ customer: null });
   const [row] = await getDb()
-    .select({ id: customers.id, phone: customers.phone, name: customers.name })
+    .select({ id: customers.id, phone: customers.phone, name: customers.name, v: customers.sessionVersion })
     .from(customers)
     .where(eq(customers.id, id));
-  return c.json({ customer: (row ?? null) satisfies Customer | null });
+  if (!row || row.v !== s?.v) return c.json({ customer: null });
+  return c.json({ customer: { id: row.id, phone: row.phone, name: row.name } satisfies Customer });
 });
 
-customerRoutes.post("/auth/logout", (c) => {
+/** Signing out ends every session of this customer (all phones), not just this cookie. */
+customerRoutes.post("/auth/logout", async (c) => {
+  const s = await readSession(c, "customer");
+  const id = s ? Number(s.sub) : NaN;
+  if (Number.isInteger(id)) {
+    await getDb()
+      .update(customers)
+      .set({ sessionVersion: sql`${customers.sessionVersion} + 1` })
+      .where(and(eq(customers.id, id), eq(customers.sessionVersion, s?.v ?? -1)));
+  }
   clearSession(c, "customer");
   return c.json({ ok: true });
 });
@@ -85,6 +100,11 @@ customerRoutes.post("/auth/logout", (c) => {
 
 const me = new Hono<AppEnv>();
 me.use(requireCustomer);
+// Every change to the account counts against one hourly budget.
+me.use(async (c, next) => {
+  if (c.req.method !== "GET") await hit(getDb(), LIMITS.accountWritesPerCustomer, String(c.get("customer").id));
+  await next();
+});
 
 me.get("/", (c) => c.json({ customer: c.get("customer") satisfies Customer }));
 
@@ -205,7 +225,14 @@ async function razorpayCheckoutFor(order: typeof orders.$inferSelect, restaurant
 myOrders.post("/", async (c) => {
   const input = await body(c, placeOrderSchema);
   const customer = c.get("customer");
+  const db0 = getDb();
+  // Attempts per network are counted; per customer, only orders actually placed count.
+  await hit(db0, LIMITS.ordersPerIpHour, clientIp(c));
+  await check(db0, LIMITS.ordersPerCustomerHour, String(customer.id));
+  await check(db0, LIMITS.ordersPerCustomerDay, String(customer.id));
   const { order, events, settings } = await placeOrder(getDb(), { ...input, customer });
+  await hit(db0, LIMITS.ordersPerCustomerHour, String(customer.id));
+  await hit(db0, LIMITS.ordersPerCustomerDay, String(customer.id));
   const razorpay = order.paymentMethod === "online" ? await razorpayCheckoutFor(order, settings.restaurantName) : null;
   return c.json({ order: orderDto(order, events), razorpay }, 201);
 });
@@ -258,8 +285,9 @@ myOrders.post("/:id/cancel", async (c) => {
 myOrders.post("/:id/payment", async (c) => {
   const id = idParam(c);
   const customerId = c.get("customer").id;
-  const { method } = (await c.req.json().catch(() => ({}))) as { method?: string };
+  const { method } = await body(c, z.object({ method: z.enum(["online", "cod"]) }));
   const db = getDb();
+  await hit(db, LIMITS.paymentsPerCustomer, String(customerId));
   const row = await ownOrder(customerId, id);
   if (row.status !== "pending_payment") throw new HttpError(409, "This order no longer needs payment.");
   const s = await loadSettings(db);
@@ -289,6 +317,7 @@ customerRoutes.post("/payments/razorpay/verify", requireCustomer, async (c) => {
   if (!keys) throw new HttpError(503, "Online payment is not set up.");
   const input = await body(c, razorpayVerifySchema);
   const db = getDb();
+  await hit(db, LIMITS.paymentsPerCustomer, String(c.get("customer").id));
   const row = await ownOrder(c.get("customer").id, input.orderId);
   if (row.razorpayOrderId !== input.razorpay_order_id) {
     throw new HttpError(422, "This payment does not match your order. Contact the restaurant before paying again.");

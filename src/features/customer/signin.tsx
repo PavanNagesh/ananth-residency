@@ -2,6 +2,7 @@ import type { ConfirmationResult } from "firebase/auth";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { formatPhone, normalizeIndianPhone, PHONE_ERROR } from "../../../shared/phone";
+import { safeNextPath } from "../../../shared/safe-path";
 import type { Customer } from "../../../shared/types";
 import { TextField } from "../../components/ui/field";
 import { Button, Notice } from "../../components/ui/primitives";
@@ -180,7 +181,7 @@ export function SignInPage() {
   const { customer, ready } = useCustomer();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const next = params.get("next")?.startsWith("/") ? params.get("next")! : "/";
+  const next = safeNextPath(params.get("next"));
   if (ready && customer?.name) return <Navigate to={next} replace />;
   return (
     <PagePanel title="Sign in" back={{ to: "/", label: "Back to menu" }}>

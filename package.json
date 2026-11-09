@@ -18,7 +18,9 @@
     "db:seed": "bun server/db/seed.ts",
     "db:setup": "bun server/db/migrate.ts && bun server/db/seed.ts",
     "test:devices": "playwright test",
-    "test:devices:report": "playwright show-report"
+    "test:devices:report": "playwright show-report",
+    "test:security": "bun test server/security.test.ts",
+    "audit": "bun audit"
   },
   "dependencies": {
     "@fontsource-variable/figtree": "^5.3.0",
@@ -54,5 +56,9 @@
   },
   "engines": {
     "node": "22.x"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6",
+    "esbuild": "^0.25.12"
   }
 }

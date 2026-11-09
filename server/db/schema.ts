@@ -28,8 +28,17 @@ export const customers = pgTable("customers", {
   phone: text().notNull().unique(),
   name: text().notNull().default(""),
   firebaseUid: text("firebase_uid"),
+  /** Bumped on sign-out: every existing session for this customer stops working. */
+  sessionVersion: integer("session_version").notNull().default(1),
   createdAt: createdAt(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+});
+
+/** Attempt counters for rate limits (see server/security.ts). Rows expire after their window. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text().primaryKey(),
+  hits: integer().notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
 });
 
 export const addresses = pgTable(

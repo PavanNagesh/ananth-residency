@@ -1,6 +1,21 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
+
+/**
+ * The production preview sends the same security headers as Vercel (vercel.json is the one
+ * source), so the device tests run against the real Content Security Policy. Over plain http
+ * on localhost, the HTTPS-only parts (upgrade-insecure-requests, HSTS) are left out.
+ */
+const vercel = JSON.parse(readFileSync(new URL("./vercel.json", import.meta.url), "utf8")) as {
+  headers: { source: string; headers: { key: string; value: string }[] }[];
+};
+const securityHeaders = Object.fromEntries(
+  (vercel.headers.find((h) => h.source === "/(.*)")?.headers ?? [])
+    .filter((h) => h.key !== "Strict-Transport-Security")
+    .map((h) => [h.key, h.key === "Content-Security-Policy" ? h.value.replace(/;\s*upgrade-insecure-requests/, "") : h.value]),
+);
 
 // API_URL: where the Hono API runs in development (server/dev.ts).
 const apiUrl = process.env.API_URL ?? "http://localhost:3001";
@@ -33,6 +48,7 @@ export default defineConfig({
     },
   },
   preview: {
+    headers: securityHeaders,
     // Lets a temporary Cloudflare quick tunnel (https://*.trycloudflare.com) reach the preview,
     // for testing on a phone: `cloudflared tunnel --url http://localhost:4173`.
     allowedHosts: [".trycloudflare.com"],

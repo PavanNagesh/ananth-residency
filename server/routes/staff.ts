@@ -36,28 +36,28 @@ import {
   staff,
 } from "../db/schema.js";
 import { body, HttpError, idParam, notFound, type AppEnv } from "../http.js";
+import { check, clear, clientIp, hit, LIMITS } from "../security.js";
+import { passwordProblem } from "../../shared/password.js";
 import { loadSettings, ordersWithEvents, settingsDto, STAFF_TRANSITIONS } from "../services.js";
 
 export const staffRoutes = new Hono<AppEnv>();
 
-// ---- Login (simple per-instance throttle on top of bcrypt) ---------------------
+// ---- Login: bcrypt + database-backed limits per account and per network ---------
 
-const failures = new Map<string, { count: number; until: number }>();
-const MAX_FAILURES = 5;
-const LOCK_MS = 10 * 60_000;
+const HASH_COST = 12;
 // Compared against when the account does not exist, so response time does not reveal it.
 let dummyHash: string | undefined;
-const getDummyHash = () => (dummyHash ??= bcrypt.hashSync("not-a-real-password", 10));
+const getDummyHash = () => (dummyHash ??= bcrypt.hashSync("not-a-real-password", HASH_COST));
 
 staffRoutes.post("/login", async (c) => {
   const { identifier, password } = await body(c, staffLoginSchema);
   const key = identifier.toLowerCase();
-  const f = failures.get(key);
-  if (f && f.count >= MAX_FAILURES && f.until > Date.now()) {
-    throw new HttpError(429, "Too many wrong passwords. Wait 10 minutes, or ask the owner to reset your password.");
-  }
-
   const db = getDb();
+  const ip = clientIp(c);
+  // Refuse before checking the password once an account or a network has too many failures.
+  await check(db, LIMITS.staffLoginPerAccount, normalizeIndianPhone(identifier) ?? key);
+  await check(db, LIMITS.staffLoginPerIp, ip);
+
   const phone = normalizeIndianPhone(identifier);
   const rows = phone
     ? await db.select().from(staff).where(eq(staff.phone, phone))
@@ -66,12 +66,13 @@ staffRoutes.post("/login", async (c) => {
   const user = rows[0];
   const ok = user ? await bcrypt.compare(password, user.passwordHash) : await bcrypt.compare(password, getDummyHash());
   if (!user || !ok || !user.isActive) {
-    failures.set(key, { count: (f && f.until > Date.now() ? f.count : 0) + 1, until: Date.now() + LOCK_MS });
+    await hit(db, LIMITS.staffLoginPerAccount, normalizeIndianPhone(identifier) ?? key).catch(() => {});
+    await hit(db, LIMITS.staffLoginPerIp, ip).catch(() => {});
     throw new HttpError(401, user && ok && !user.isActive
       ? "This account is switched off. Ask the owner to turn it back on."
       : "That phone number or password is not right. Check both and try again.");
   }
-  failures.delete(key);
+  await clear(db, LIMITS.staffLoginPerAccount, normalizeIndianPhone(identifier) ?? key);
   await issueSession(c, "staff", { sub: String(user.id), v: user.sessionVersion });
   return c.json({ staff: { id: user.id, name: user.name, phone: user.phone, role: user.role, isActive: true } satisfies StaffUser });
 });
@@ -92,12 +93,16 @@ authed.post("/me/password", async (c) => {
   const db = getDb();
   const me = c.get("staff");
   const [row] = await db.select().from(staff).where(eq(staff.id, me.id));
+  await check(db, LIMITS.staffLoginPerAccount, row?.phone ?? String(me.id));
   if (!row || !(await bcrypt.compare(current, row.passwordHash))) {
+    await hit(db, LIMITS.staffLoginPerAccount, row?.phone ?? String(me.id)).catch(() => {});
     throw new HttpError(422, "Your current password is not right.", { current: "Check your current password." });
   }
+  const weak = passwordProblem(next, { phone: row.phone, name: row.name });
+  if (weak) throw new HttpError(422, weak, { next: weak });
   const [updated] = await db
     .update(staff)
-    .set({ passwordHash: await bcrypt.hash(next, 10), sessionVersion: row.sessionVersion + 1 })
+    .set({ passwordHash: await bcrypt.hash(next, HASH_COST), sessionVersion: row.sessionVersion + 1 })
     .where(eq(staff.id, me.id))
     .returning();
   await issueSession(c, "staff", { sub: String(me.id), v: updated!.sessionVersion });
@@ -467,11 +472,13 @@ authed.get("/users", requireOwner, async (c) => {
 authed.post("/users", requireOwner, async (c) => {
   const input = await body(c, staffCreateSchema);
   const db = getDb();
+  const weak = passwordProblem(input.password, { phone: input.phone, name: input.name });
+  if (weak) throw new HttpError(422, weak, { password: weak });
   const [clash] = await db.select({ id: staff.id }).from(staff).where(eq(staff.phone, input.phone));
   if (clash) throw new HttpError(409, "Someone already uses this phone number.", { phone: "This number is already registered." });
   const [row] = await db
     .insert(staff)
-    .values({ name: input.name, phone: input.phone, role: input.role, passwordHash: await bcrypt.hash(input.password, 10) })
+    .values({ name: input.name, phone: input.phone, role: input.role, passwordHash: await bcrypt.hash(input.password, HASH_COST) })
     .returning();
   return c.json({ user: userDto(row!) }, 201);
 });
@@ -486,6 +493,10 @@ authed.patch("/users/:id", requireOwner, async (c) => {
   }
   const [row] = await db.select().from(staff).where(eq(staff.id, id));
   if (!row) throw notFound("That staff member");
+  if (input.password) {
+    const weak = passwordProblem(input.password, { phone: row.phone, name: input.name ?? row.name });
+    if (weak) throw new HttpError(422, weak, { password: weak });
+  }
   const revoke = input.password !== undefined || input.isActive === false || (input.role && input.role !== row.role);
   const [updated] = await db
     .update(staff)
@@ -493,7 +504,7 @@ authed.patch("/users/:id", requireOwner, async (c) => {
       ...(input.name ? { name: input.name } : {}),
       ...(input.role ? { role: input.role } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-      ...(input.password ? { passwordHash: await bcrypt.hash(input.password, 10) } : {}),
+      ...(input.password ? { passwordHash: await bcrypt.hash(input.password, HASH_COST) } : {}),
       ...(revoke ? { sessionVersion: row.sessionVersion + 1 } : {}),
     })
     .where(eq(staff.id, id))

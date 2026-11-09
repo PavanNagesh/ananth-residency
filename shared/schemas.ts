@@ -1,7 +1,11 @@
 import { z } from "zod";
+import { passwordProblem } from "./password.js";
 import { normalizeIndianPhone, PHONE_ERROR } from "./phone.js";
 
 /** Request bodies, validated on the server; the browser reuses them for form checks. */
+
+/** A database id: positive and inside Postgres's integer range (larger values could only cause errors). */
+const dbId = () => z.number().int().positive().max(2_147_483_647);
 
 export const phoneSchema = z
   .string()
@@ -48,8 +52,8 @@ export const placeOrderSchema = z.object({
   lines: z
     .array(
       z.object({
-        itemId: z.number().int().positive(),
-        variantId: z.number().int().positive().nullable().default(null),
+        itemId: dbId(),
+        variantId: dbId().nullable().default(null),
         qty: z.number().int().min(1).max(50),
       }),
     )
@@ -80,7 +84,7 @@ export const categorySchema = z.object({
 });
 
 export const itemSchema = z.object({
-  categoryId: z.number().int().positive(),
+  categoryId: dbId(),
   name: name("a dish name", 80),
   description: z.string().trim().max(240).default(""),
   pricePaise: paise,
@@ -89,7 +93,7 @@ export const itemSchema = z.object({
   variants: z
     .array(
       z.object({
-        id: z.number().int().positive().optional(),
+        id: dbId().optional(),
         name: name("an option name", 40),
         pricePaise: paise,
         isAvailable: z.boolean().default(true),
@@ -101,13 +105,13 @@ export const itemSchema = z.object({
 
 export const availabilitySchema = z.object({ isAvailable: z.boolean() });
 export const bulkAvailabilitySchema = z.object({
-  categoryId: z.number().int().positive(),
+  categoryId: dbId(),
   isAvailable: z.boolean(),
 });
 
 export const presetSchema = z.object({
   name: name("a preset name", 40),
-  itemIds: z.array(z.number().int().positive()).max(2000).default([]),
+  itemIds: z.array(dbId()).max(2000).default([]),
 });
 
 export const announcementSchema = z.object({
@@ -133,7 +137,11 @@ export const settingsSchema = z.object({
 
 export const acceptingSchema = z.object({ acceptingOrders: z.boolean() });
 
-const password = z.string().min(8, "Use at least 8 characters for the password.").max(72);
+const password = z
+  .string()
+  .min(8, "Use at least 8 characters for the password.")
+  .max(72, "Keep the password under 72 characters.")
+  .refine((p) => passwordProblem(p) === null, { message: "That password is too easy to guess. Choose another." });
 
 export const staffCreateSchema = z.object({
   name: name("a name", 60),
@@ -152,7 +160,7 @@ export const staffUpdateSchema = z.object({
 export const changePasswordSchema = z.object({ current: z.string().min(1, "Enter your current password."), next: password });
 
 export const razorpayVerifySchema = z.object({
-  orderId: z.number().int().positive(),
+  orderId: dbId(),
   razorpay_order_id: z.string().min(1),
   razorpay_payment_id: z.string().min(1),
   razorpay_signature: z.string().min(1),

@@ -27,6 +27,11 @@ export const notFound = (what = "That item") => new HttpError(404, `${what} coul
 
 /** Parses and validates a JSON body; 400 for malformed JSON, 422 with per-field messages for invalid data. */
 export async function body<S extends z.ZodType>(c: Context, schema: S): Promise<z.output<S>> {
+  // Only JSON is accepted: an HTML form posted from another site can't send it without a CORS preflight.
+  const type = c.req.header("content-type") ?? "";
+  if (!/^application\/json\s*(;|$)/i.test(type)) {
+    throw new HttpError(415, "Send this request as JSON.");
+  }
   let raw: unknown;
   try {
     raw = await c.req.json();
@@ -53,7 +58,9 @@ export function validate<S extends z.ZodType>(schema: S, raw: unknown): z.output
 }
 
 export function idParam(c: Context, name = "id"): number {
-  const n = Number(c.req.param(name));
-  if (!Number.isInteger(n) || n <= 0) throw notFound();
+  const raw = c.req.param(name) ?? "";
+  const n = /^\d{1,10}$/.test(raw) ? Number(raw) : NaN;
+  // Postgres integer ids stop at 2,147,483,647; anything else cannot exist.
+  if (!Number.isInteger(n) || n <= 0 || n > 2_147_483_647) throw notFound();
   return n;
 }

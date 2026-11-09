@@ -96,7 +96,7 @@ git push -u origin main
 | `FIREBASE_PROJECT_ID` | Firebase project ID |
 | `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` | From the Firebase web app config |
 
-Do **not** set `DEV_OTP`. The server refuses the development code on production deployments anyway.
+Also set `APP_ORIGINS` to your site address (for example `https://order.ananthresidency.in`). Do **not** set `DEV_OTP`; the server refuses the development code on every Vercel deployment anyway. Before launch, go through the account settings in [SECURITY.md](SECURITY.md).
 
 **6. Create the tables and the owner account** once, from your computer. Put the production `DATABASE_URL` and the owner's real `OWNER_NAME`, `OWNER_PHONE` and `OWNER_PASSWORD` into `.env`, then run:
 

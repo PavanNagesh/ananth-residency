@@ -10,11 +10,12 @@ export const requireCustomer = createMiddleware<AppEnv>(async (c, next) => {
   const id = s ? Number(s.sub) : NaN;
   if (!Number.isInteger(id)) throw new HttpError(401, "Sign in with your phone number to continue.");
   const [row] = await getDb()
-    .select({ id: customers.id, phone: customers.phone, name: customers.name })
+    .select({ id: customers.id, phone: customers.phone, name: customers.name, v: customers.sessionVersion })
     .from(customers)
     .where(eq(customers.id, id));
-  if (!row) throw new HttpError(401, "Your session has ended. Sign in again to continue.");
-  c.set("customer", row);
+  // A signed-out session (older version) is refused even though its signature is still valid.
+  if (!row || row.v !== s?.v) throw new HttpError(401, "Your session has ended. Sign in again to continue.");
+  c.set("customer", { id: row.id, phone: row.phone, name: row.name });
   await next();
 });
 

@@ -248,10 +248,10 @@ describe("staff", () => {
   });
 
   test("staff accounts: non-owners cannot manage the team; deactivation ends sessions", async () => {
-    const created = await staffC("/staff/users", { body: { name: "Counter", phone: "9000000010", password: "counter-pass-1" } });
+    const created = await staffC("/staff/users", { body: { name: "Counter", phone: "9000000010", password: "Tw1light-Kitchen-9" } });
     expect(created.status).toBe(201);
     const counter = client();
-    await counter("/staff/login", { body: { identifier: "9000000010", password: "counter-pass-1" } });
+    await counter("/staff/login", { body: { identifier: "9000000010", password: "Tw1light-Kitchen-9" } });
     expect((await counter("/staff/orders")).status).toBe(200);
     expect((await counter("/staff/users")).status).toBe(403);
     expect((await counter("/staff/settings", { method: "PUT", body: {} })).status).toBe(403);

@@ -15,6 +15,13 @@
       "when": 1794212286437,
       "tag": "0001_address_location",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794216181833,
+      "tag": "0002_security_hardening",
+      "breakpoints": true
     }
   ]
 }
